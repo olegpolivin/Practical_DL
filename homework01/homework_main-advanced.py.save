@@ -161,21 +161,21 @@ for epoch in range(epochs):
     k = 0
     for x_batch, y_batch in batches:
         net.zeroGradParameters()
-        
+
         # Forward
         predictions = net.forward(x_batch)
-        loss = criterion.forward(predictions, y_batch)
-    
+        loss = criterion.forward(predictions, y_batch_ohe)
+
         # Backward
-        dp = criterion.backward(predictions, y_batch)
+        dp = criterion.backward(predictions, y_batch_ohe)
         net.backward(x_batch, dp)
         
         # Update weights
         adam_optimizer(net.getParameters(),
                        net.getGradParameters(),
                        config,
-                       {})       
-
+                       {}
+        
         loss_history.append(loss)
 
         k = k + 1
@@ -185,7 +185,7 @@ for epoch in range(epochs):
     net.evaluate()
     # Performance on validation set
     predictions_val = net.forward(X_val)
-    loss_vall = criterion.forward(predictions_val, y_val_ohe)
+    loss_vall = criterion.forward(predictions_val, y_batch_ohe)
     pred_val = predictions_val.argmax(axis=1)
     acc_val = np.mean(pred_val == y_val)
     net.train()
