@@ -1,0 +1,113 @@
+1. First, I established a pipeline for training
+2. Next, there came a question of actually creating a NN architecture. 
+At that point, I had a strong desire to look something up in the internet, but I decided to first try myself.
+
+Ok, let's have some
+- convolutional layers first
+- add batchnorm after convolution
+- apply relu
+- add max-pooling
+This is similar to what has been done on seminar 3.  This way I will make more channels, but reduce the initial image size. Сделаю картинки жирными, но маленькими.
+Quite often in older papers (like UNet) you see convolution + max-pooling going together often, one after another. I think with introduction of batch-norm it is better to have it right after convolution. However, I am a bit puzzled of where to put max pooling layers. But I will experiment first by trying to put it as in seminar 3, that is after ReLU.
+
+- repeat this block one or two more times. And then Flatten and apply fully-connected layers to arrive to the number of classes in the end.
+
+That's my first architecture choice:
+model = nn.Sequential()
+model.add_module('conv1', nn.Conv2d(3, 200, kernel_size=(3,3), stride=1))
+model.add_module('bn1', nn.BatchNorm2d(200))
+model.add_module('relu1', nn.ReLU())
+model.add_module('maxpool1', nn.MaxPool2d(3))
+model.add_module('conv2', nn.Conv2d(200, 400, kernel_size=(3,3), stride=1))
+model.add_module('bn2', nn.BatchNorm2d(400))
+model.add_module('relu2', nn.ReLU())
+model.add_module('maxpool2', nn.MaxPool2d(3))
+model.add_module('flatten', nn.Flatten())
+model.add_module('fc1', nn.Linear(14400, 1000))
+model.add_module('fc2', nn.Linear(1000, 200))
+
+After 1 epoch the accuracy of validation data was equal to 16%. Not bad.
+What if I do it for 5 epochs?
+After 5 epochs with this architecture the accuracy was 25%.
+Epoch 5 of 5 took 69.025s
+  training loss (in-iteration): 	2.915571
+  validation accuracy: 			25.88 %
+
+Let's play with layers.
+And then do the same but introducing dropout as well?
+It becasme 25.86%
+
+Actually, dropout before the last linear layer (after the first linear layer) didn't help much.
+
+So, I decided to switch to implementing augmentations and come back to experiments with layers later.
+
+With the following network:
+model = nn.Sequential()
+
+
+model.add_module('conv1', nn.Conv2d(3, 200, kernel_size=(3,3), stride=1))
+model.add_module('bn1', nn.BatchNorm2d(200))
+model.add_module('relu1', nn.ReLU())
+model.add_module('maxpool1', nn.MaxPool2d(3))
+model.add_module('conv2', nn.Conv2d(200, 400, kernel_size=(3,3), stride=1))
+model.add_module('bn2', nn.BatchNorm2d(400))
+model.add_module('relu2', nn.ReLU())
+model.add_module('maxpool2', nn.MaxPool2d(3))
+model.add_module('flatten', nn.Flatten())
+model.add_module('fc1', nn.Linear(14400, 1000))
+model.add_module('dp1', nn.Dropout(0.5))
+model.add_module('fc2', nn.Linear(1000, 200))
+model = model.to(device)
+loss_fn = nn.CrossEntropyLoss()
+
+I understood that it is getting stuck: after 35-45 epochs the accuracy was jumpring around 32-34%. 
+So, I decided to introduce MOAR layers + add some new non-linearities + introduce scheduling for the LR.
+
+I discovered that a more complicated network:
+model.add_module('conv1', nn.Conv2d(3, 200, kernel_size=(3,3), stride=1))
+model.add_module('bn1', nn.BatchNorm2d(200))
+model.add_module('relu1', nn.ReLU())
+model.add_module('maxpool1', nn.MaxPool2d(2))
+model.add_module('conv2', nn.Conv2d(200, 400, kernel_size=(3,3), stride=1))
+model.add_module('bn2', nn.BatchNorm2d(400))
+model.add_module('relu2', nn.ReLU())
+model.add_module('maxpool2', nn.MaxPool2d(3))
+
+model.add_module('flatten', nn.Flatten())
+model.add_module('fc1', nn.Linear(32400, 10000))
+model.add_module('bn3', nn.BatchNorm1d(10000))
+model.add_module('lrelu1', nn.LeakyReLU())
+model.add_module('dp1', nn.Dropout(0.7))
+
+model.add_module('fc2', nn.Linear(10000, 1000))
+model.add_module('bn4', nn.BatchNorm1d(1000))
+model.add_module('relu3', nn.ReLU())
+
+model.add_module('fc3', nn.Linear(1000, 200))
+model = model.to(device)
+loss_fn = nn.CrossEntropyLoss()
+
+does not necesserally trains better (at least, judging by first 20 epochs). Also, it trains much longer.
+I think it is necessary to reduce the number of layers and do something clever.
+
+Changed normalizing values: (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+
+Being stuck at 30%, I decided to turn to known architectures, and I decided to implement VGG16.
+
+model.add_module('conv1', nn.Conv2d(3, 200, kernel_size=(3,3), stride=1))
+model.add_module('bn1', nn.BatchNorm2d(200))
+model.add_module('relu1', nn.ReLU())
+model.add_module('conv1_2', nn.Conv2d(200, 200, kernel_size=(3,3), stride=1))
+model.add_module('bn1_2', nn.BatchNorm2d(200))
+model.add_module('relu1_2', nn.ReLU())
+model.add_module('maxpool1', nn.MaxPool2d(3))
+model.add_module('conv2', nn.Conv2d(200, 400, kernel_size=(3,3), stride=1))
+model.add_module('bn2', nn.BatchNorm2d(400))
+model.add_module('relu2', nn.ReLU())
+model.add_module('maxpool2', nn.MaxPool2d(3))
+model.add_module('flatten', nn.Flatten())
+model.add_module('fc1', nn.Linear(14400, 1000))
+model.add_module('dp1', nn.Dropout(0.5))
+model.add_module('fc2', nn.Linear(1000, 200))
+model = model.to(device)
+loss_fn = nn.CrossEntropyLoss()
