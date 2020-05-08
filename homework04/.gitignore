@@ -1,0 +1,8 @@
+annotations/
+data/
+data2/
+__pycache__
+train2017/
+val2017/
+annotations_trainval2017.zip
+.ipynb_checkpoints/
